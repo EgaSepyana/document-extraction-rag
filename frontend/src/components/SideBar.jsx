@@ -2,6 +2,21 @@ import { FileText, X } from "lucide-react";
 import React from "react";
 
 const SideBar = ({ chats, onChatAdd, onChatSelect, activeChat }) => {
+  const ChatButton = ({ chat }) => (
+    <button
+      onClick={() => onChatSelect(chat.id)}
+      className={`${
+        activeChat?.id === chat.id ? "dark:bg-card-dark" : ""
+      } cursor-pointer px-2 rounded-lg py-3 flex w-full items-center justify-between`}
+    >
+      <div className="flex items-center justify-start gap-2">
+        <FileText />
+        <p className="truncate max-w-[150px]">{chat.fileName}</p>
+      </div>
+      <X className="cursor-pointer w-5 h-5" />
+    </button>
+  );
+
   return (
     <div className="flex flex-col px-6 py-8 w-72 h-screen overflow-hidden border-r border-solid dark:border-primary-border-dark">
       <button
@@ -16,20 +31,7 @@ const SideBar = ({ chats, onChatAdd, onChatSelect, activeChat }) => {
       <div className="flex hide-scrollbar overflow-y-auto flex-1">
         <div className="w-full flex flex-col gap-2.5">
           {chats &&
-            chats.map((chat, i) => (
-              <button
-                onClick={() => onChatSelect(chat.id)}
-                className={`${
-                  activeChat?.id === chat.id ? "dark:bg-card-dark" : ""
-                } cursor-pointer px-2 rounded-lg py-3 flex w-full items-center justify-between`}
-              >
-                <div className="flex items-center justify-start gap-2">
-                  <FileText />
-                  <p className="truncate max-w-[150px]">{chat.fileName}</p>
-                </div>
-                <X className="cursor-pointer w-5 h-5" />
-              </button>
-            ))}
+            chats.map((chat, i) => <ChatButton key={chat.id} chat={chat} />)}
         </div>
       </div>
       <div className="flex items-center justify-start gap-3 py-4 pb-8 border-t border-solid dark:border-primary-border-dark">

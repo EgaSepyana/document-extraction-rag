@@ -30,7 +30,7 @@ args = argument_parser.parse_args()
 
 settings = Setting(file=args.file_env, update_env=args.update_env, routers=args.routers)
 
-app = FastAPI(**{"title": "Fusion Survey", "description": "REST API for Fusion"})
+app = FastAPI(**{"title": "Skill Test RAG API", "description": "REST API for Test"})
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

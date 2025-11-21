@@ -21,10 +21,3 @@ class DocumentDTO(BaseModel):
 
 class UpdateDocumentDTO(DocumentDTO):
     id: str
-
-
-# class Document(Base):
-#     __tablename__ = settings.POSTGRESQL_TABLE_DOCUMENT
-#     id = Column(String, primary_key=True, index=True)
-#     created_at = Column(DateTime , nullable=True)
-#     name = Column(String, index=True)

@@ -22,13 +22,17 @@ class BaseSetting(BaseSettings):
     EMBEDING_MODEL : str
     EMBEDDING_SIZE : str
 
-
     ACTIVE_ROUTERS : str
     PROJECT_SERVICE_PORT : str
 
     # PG
     BASE_POSTGRESQL_URL: str
     POSTGRESQL_TABLE_DOCUMENT : str
+
+    REDIS_HOST: str
+    REDIS_PORT: str
+    REDIS_PASSWORD: str
+    REDIS_DB: str
 
     COPYRIGHT: str = Field(default="Copyright (c) 2023 eBdesk Teknologi. All Rights Reserved.")
 

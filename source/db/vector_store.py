@@ -14,8 +14,11 @@ class VectorStores:
         self.extractor = Extraktor()
         self.collection_name = "ega-document"
         self.persistence_name = "./chroma_data"
+        self.CHROMA_SETTINGS = Settings(
+            anonymized_telemetry=False,
+        )
 
-    def test_query(self , query):
+    def test_query(self, query):
         # vectro_strore = VectorStores()
 
         embedler = Embedler()
@@ -44,7 +47,7 @@ class VectorStores:
         # print(chunks)
         # print(embedings)
 
-        self.add_embeddings(doc_id , embedings , chunks , metadata)
+        self.add_embeddings(doc_id, embedings, chunks, metadata)
         # self.add_embeding_seq(doc_id, embedings, chunks, metadata)
 
         # collection.add(
@@ -59,7 +62,7 @@ class VectorStores:
         logger.info("====Staring Embed Document=====")
         # client = HttpClient(host="localhost", port=8000)
         client = chromadb.PersistentClient(
-            self.persistence_name, settings=Settings(anonymized_telemetry=False)
+            self.persistence_name, settings=self.CHROMA_SETTINGS
         )
         collection = client.get_or_create_collection(
             self.collection_name, metadata={"hnsw:space": "cosine"}
@@ -84,7 +87,7 @@ class VectorStores:
         logger.info("====Staring Embed Document=====")
         # client = HttpClient(host="localhost", port=8000)
         client = chromadb.PersistentClient(
-            self.persistence_name, settings=Settings(anonymized_telemetry=False)
+            self.persistence_name, settings=self.CHROMA_SETTINGS
         )
         collection = client.get_or_create_collection(
             self.collection_name, metadata={"hnsw:space": "cosine"}
@@ -100,22 +103,24 @@ class VectorStores:
                 ids=[f"{doc_id}-{i}"],
             )
 
-    def search_similar(self, query_embedding, top_k=3 , query=None) -> list:
+    def search_similar(self, query_embedding, top_k=3, query=None) -> list:
         # client = HttpClient(host="localhost", port=8000)
-        client = chromadb.PersistentClient(self.persistence_name)
-        collection = client.get_or_create_collection(self.collection_name)
+        client = chromadb.PersistentClient(
+            self.persistence_name, settings=self.CHROMA_SETTINGS
+        )
+        collection = client.get_collection(self.collection_name)
 
         results = collection.query(
-            query_embeddings=query_embedding,
-            n_results=top_k,
-            where=query
+            query_embeddings=query_embedding, n_results=top_k, where=query
         )
 
         return results
 
-    def search(self , text:str):
-        client = chromadb.PersistentClient(self.persistence_name)
-        collection = client.get_or_create_collection(self.collection_name)
+    def search(self, text: str):
+        client = chromadb.PersistentClient(
+            self.persistence_name, settings=self.CHROMA_SETTINGS
+        )
+        collection = client.get_collection(self.collection_name)
 
         results = collection.query(
             query_texts=[text],

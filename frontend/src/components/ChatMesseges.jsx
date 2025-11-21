@@ -16,7 +16,7 @@ const ChatMesseges = ({item}) => {
         >
           {/* <span className="text-sm opacity-70">You</span> */}
           <span className="text-xs opacity-70">
-            {item.isUser ? "You" : "Rega Agent"}
+            {item.isUser ? "You" : "Raga Agent"}
           </span>
         </div>
         <div

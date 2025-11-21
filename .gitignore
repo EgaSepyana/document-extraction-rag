@@ -1,7 +1,10 @@
 # BACKEND
 venv
 .env
-public
+*.pdf
+*.csv
+*.doc
+*.docx
 __pycache__
 
 # Logs

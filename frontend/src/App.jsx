@@ -6,6 +6,7 @@ import ChatInput from "./components/ChatInput";
 import Loading from "./components/Loading";
 import SideBar from "./components/SideBar";
 import { NavBar } from "./components/NavBar";
+import apiService from "./api/services/qna";
 function App() {
   const sample_chat = {
     uploadedFile: null,
@@ -42,6 +43,8 @@ function App() {
   const [chats, setChats] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [conversationLoading, setConversationLoading] = useState(false);
   const chatContainerRef = useRef(null);
 
   useEffect(() => {
@@ -51,10 +54,47 @@ function App() {
     }
   }, [activeChat?.messages]);
 
+  const fetchChats = async () => {
+    setChatLoading(true);
+
+    const { data } = await apiService.getAllChats();
+
+    let chats = data.map((chat) => ({
+      id: chat.id,
+      uploadedFile: null,
+      fileName: chat.fileName,
+      messages: [],
+      createdAt: chat.createdAt,
+    }));
+
+    setChats(chats);
+    setChatLoading(false);
+  };
+
+  const fetchConversaion = async (activeChat) => {
+    setConversationLoading(true);
+
+    const { data } = await apiService.getConversation(activeChat.id);
+
+    // console.log(data);
+    setActiveChat((prev) => ({
+      ...prev,
+      ...activeChat,
+      ...{ messages: [...data] },
+    }));
+    setConversationLoading(false);
+  };
+
+  // get-all files
+  useEffect(() => {
+    fetchChats();
+  }, []);
+
   const selectChat = (chatId) => {
     const chat = chats.find((c) => c.id === chatId);
     if (chat) {
       setActiveChat(chat);
+      fetchConversaion(chat);
     }
   };
 
@@ -76,14 +116,19 @@ function App() {
   };
 
   const handleFileSelect = async (file) => {
-    console.log("FILE SELECTED");
+    // console.log("FILE SELECTED");
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // API UPLOAD IMPLEMENTATION
+      const reponse = await apiService.uploadFile(file);
+      // console.log(reponse);
+
+      const { file_name, id, created_at } = reponse.data;
 
       // API INDEX IMPLEMENTATION
+      const indexing_response = await apiService.indexFile(id);
 
       const systemMesseges = {
         id: Date.now(),
@@ -93,11 +138,11 @@ function App() {
       };
 
       const newChat = {
-        id: Date.now(),
+        id: id,
         uploadedFile: file,
-        fileName: file.name,
+        fileName: file_name,
         messages: [systemMesseges],
-        createdAt: new Date().toLocaleString(),
+        createdAt: created_at,
       };
 
       createNewChat(newChat);
@@ -128,10 +173,12 @@ function App() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // API CHAT IMPLEMENTATION
+      const chat_response = await apiService.sendChat(query, activeChat.id);
+      const { answer } = chat_response.data;
 
       const aiMessage = {
         id: Date.now() + 1,
-        messege: `This is a simulated response to: "${query}". In production, this would be the AI's analysis of your uploaded file "${activeChat.fileName}".`,
+        messege: answer,
         isUser: false,
         timestamp: new Date().toLocaleTimeString(),
       };
@@ -157,7 +204,7 @@ function App() {
       setIsLoading(false);
     }
 
-    console.log(query);
+    // console.log(query);
   };
 
   return (

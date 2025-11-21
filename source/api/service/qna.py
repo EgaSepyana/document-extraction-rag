@@ -14,7 +14,7 @@ from api.model import FindDTO
 from api.model.qna import QnaDTO, IndexingRequestDTO, ChatRequestDTO
 from sqlalchemy.exc import IntegrityError
 from fastapi import UploadFile
-from api.util.helper import get_md5, orm_to_dict
+from api.util.helper import get_md5, orm_to_dict, row_to_dict
 from uuid import uuid4
 from db.vector_store import VectorStores
 from service.extractor import Extraktor
@@ -50,7 +50,9 @@ class QnaService:
         dto.file_path = file_path
         dto.file_extention = file_extention
         dto.indexing = False
-        dto.contents = "".join([text["text"] for text in self.extractor.extract_file(file_path)])
+        dto.contents = "".join(
+            [text["text"] for text in self.extractor.extract_file(file_path)]
+        )
 
         document = dto.model_dump()
         document["created_at"] = datetime.now()
@@ -112,12 +114,91 @@ class QnaService:
                 ]
             }
             answer = self.llm_client.generate_answer(
-                query, top_k=3 , query_metadata=query_metadata
+                query, top_k=3, query_metadata=query_metadata, chatId=document_id
             )
         else:
             answer = self.llm_client.generate(query)
 
+        self.addConversation(document_id, query, answer.get("answer"))
+
         return answer
+
+    def get_all(self, dto: FindDTO):
+        from sqlalchemy import cast, String, Table, MetaData, and_, or_
+        from sqlalchemy.orm import aliased
+
+        db_pg = next(get_db(self.pg_engine))
+
+        Document = Table("document", MetaData(schema="ega"), autoload_with=db_pg.bind)
+
+        query = db_pg.query(
+            Document.c.id,
+            Document.c.file_name.label("fileName"),
+            Document.c.created_at.label("createdAt"),
+        ).filter(Document.c.indexing == True)
+
+        query = query.order_by(Document.c.created_at.desc())
+
+        def retrieve_data(dto, query):
+            total_count = query.count()
+            data = query.offset((dto.page - 1) * dto.size).limit(dto.size).all()
+            return data, total_count
+
+        try:
+            data, total_count = retrieve_data(dto, query)
+        except Exception as e:
+            if "please rollback() fully before proceeding" in str(e).lower():
+                db_pg.rollback()
+                data, total_count = retrieve_data(dto, query)
+            else:
+                raise e
+        finally:
+            db_pg.close()
+
+        if isinstance(data, list):
+            return [row_to_dict(datum) for datum in data], total_count
+        else:
+            return [], 0
+
+    def get_conversation(self, documentId: str):
+        from sqlalchemy import cast, String, Table, MetaData, and_, or_
+        from sqlalchemy.orm import aliased
+
+        db_pg = next(get_db(self.pg_engine))
+
+        Conversation = Table(
+            "conversation", MetaData(schema="ega"), autoload_with=db_pg.bind
+        )
+
+        query = db_pg.query(
+            Conversation.c.id,
+            Conversation.c.contents.label("messege"),
+            Conversation.c.isUser.label("isUser"),
+            Conversation.c.created_at.label("timestamp"),
+        ).filter(Conversation.c.chat_id == documentId)
+
+        query = query.order_by(Conversation.c.created_at.asc())
+
+        def retrieve_data(query):
+            total_count = query.count()
+            data = query.all()
+            return data, total_count
+
+        try:
+            data, total_count = retrieve_data(query)
+        except Exception as e:
+            if "please rollback() fully before proceeding" in str(e).lower():
+                db_pg.rollback()
+                data, total_count = retrieve_data(query)
+            else:
+                raise e
+        finally:
+            db_pg.close()
+
+        if isinstance(data, list):
+            return [row_to_dict(datum) for datum in data], total_count
+        else:
+            return [], 0
 
     def docs(self, document_id: str):
         document = get_one("document", "ega", self.db_pg, "id", document_id)
@@ -125,6 +206,29 @@ class QnaService:
             raise Exception("Document Is Not Exist")
 
         return document
+
+    def addConversation(self, chatId: str, query: str, answer: str):
+
+        messege_user = {
+            "id": str(uuid4()).replace("-", ""),
+            "chat_id": chatId,
+            "isUser": True,
+            "contents": query,
+            "created_at": datetime.now(),
+        }
+
+        messege_ai = {
+            "id": str(uuid4()).replace("-", ""),
+            "chat_id": chatId,
+            "isUser": False,
+            "contents": answer,
+            "created_at": datetime.now(),
+        }
+
+        auto_insert_table(
+            "conversation", "ega", [messege_user, messege_ai], self.pg_engine
+        )
+        return True
 
     # def update(self, dto: UpdateQnaDTO):
     #     dict_dto = {key: value for key, value in dto.dict().items()}
